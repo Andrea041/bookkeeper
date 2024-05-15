@@ -73,6 +73,7 @@
     <module>testtools</module>
     <module>report-collector</module>
   </modules>
+
   <mailingLists>
     <mailingList>
       <name>BookKeeper User</name>
@@ -114,6 +115,13 @@
     <testRetryCount>2</testRetryCount>
     <src.dir>src/main/java</src.dir>
     <test.additional.args />
+
+    <!-- SonarCloud ISW2 -->
+    <sonar.organization>Andrea041</sonar.organization>
+    <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+
+    <!-- JaCoCo ISW2 -->
+    <sonar.coverage.jacoco.xmlReportPaths>../test-jacoco/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 
     <!-- dependencies -->
     <arquillian-cube.version>1.18.2</arquillian-cube.version>
