@@ -117,7 +117,7 @@
     <test.additional.args />
 
     <!-- SonarCloud ISW2 -->
-    <sonar.organization>andrea041</sonar.organization>
+    <sonar.organization>Andrea041</sonar.organization>
     <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 
     <!-- JaCoCo ISW2 -->
