@@ -51,7 +51,6 @@
     <url>https://builds.apache.org/job/bookkeeper-master</url>
   </ciManagement>
   <modules>
-    <!-- skip unnecessary module
     <module>buildtools</module>
     <module>circe-checksum</module>
     <module>bookkeeper-common</module>
@@ -72,8 +71,6 @@
     <module>tests</module>
     <module>native-io</module>
     <module>testtools</module>
-    -->
-    <module>bookkeeper-server</module>
     <module>report-collector</module>
   </modules>
   <mailingLists>
