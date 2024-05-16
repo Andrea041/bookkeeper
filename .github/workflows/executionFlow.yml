@@ -37,7 +37,6 @@ jobs:
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Andrea041_bookkeeper -P coverage
 
       - name: Save JaCoCo report
-        if: success() && steps.build.outputs.jacoco-report-found == 'true'
         uses: actions/upload-artifact@v3
         with:
           name: JaCoCoReport
