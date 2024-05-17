@@ -34,7 +34,7 @@ jobs:
       - name: Build and analyze
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn clean verify -P BaDuaCoverage
+        run: mvn clean verify -P Ba-Dua
 
       - name: Upload report
         uses: actions/upload-artifact@v3
