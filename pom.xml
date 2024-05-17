@@ -1130,12 +1130,14 @@
 
   <profiles>
     <profile>
-      <id>coverage</id>
+      <id>JaCoCo</id>
       <activation>
         <activeByDefault>false</activeByDefault>
+        <!--
         <property>
           <name>!skipCoverage</name>
         </property>
+        -->
       </activation>
       <build>
         <plugins>
