@@ -74,12 +74,14 @@ public class WriteCachePutTest {
             check = writeCache.put(ledgerId, entryId, entry);
             Assert.assertEquals(booleanOutput, check);
 
+            tempBuf = writeCache.get(ledgerId, entryId);
             if (!fullCache) {
                 /* This check is only for put test when cache is not full
                 * because it will not create any new buckets */
-                tempBuf = writeCache.get(ledgerId, entryId);
                 /* Check if the content is effectively written */
                 Assert.assertEquals(entry.readableBytes(), tempBuf.readableBytes());
+            } else {
+                Assert.assertNull(tempBuf);
             }
         } catch (Exception e) {
             Assert.assertEquals(exceptionOutput, e.getClass());
