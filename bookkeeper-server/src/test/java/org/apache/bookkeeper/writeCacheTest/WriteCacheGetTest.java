@@ -21,6 +21,7 @@ public class WriteCacheGetTest {
     private Class<? extends Exception> exceptionOutput;
     private ByteBuf outputBuffer;
     private WriteCache writeCache;
+    /* this attribute is used to simulate the existence of ledgerId and entryId */
     private final boolean existingIds;
 
     public WriteCacheGetTest(long ledgerId, long entryId, Object output, boolean existingIds) {
@@ -46,7 +47,7 @@ public class WriteCacheGetTest {
 
         return Arrays.asList(new Object[][] {
                 {1, -1, IllegalArgumentException.class, true},
-                {0, 1, null, false},
+                {0, 1, null, false},    // not exception = legal argument, but not existing ids
                 {-1, 0, IllegalArgumentException.class, true},
                 {1, 1, entry, true}
         });

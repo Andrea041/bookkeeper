@@ -65,14 +65,22 @@ public class WriteCachePutTest {
     @Test
     public void test() {
         boolean check;
+        ByteBuf tempBuf;
 
-        if (fullCache) {
+        if (fullCache)
             entry.writeBytes(new byte[(int) (maxCacheSize + 1)]);
-        }
 
         try {
             check = writeCache.put(ledgerId, entryId, entry);
             Assert.assertEquals(booleanOutput, check);
+
+            if (!fullCache) {
+                /* This check is only for put test when cache is not full
+                * because it will not create any new buckets */
+                tempBuf = writeCache.get(ledgerId, entryId);
+                /* Check if the content is effectively written */
+                Assert.assertEquals(entry.readableBytes(), tempBuf.readableBytes());
+            }
         } catch (Exception e) {
             Assert.assertEquals(exceptionOutput, e.getClass());
         }
