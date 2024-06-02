@@ -25,8 +25,9 @@ public class WriteCachePutTest {
     private Class<? extends Exception> exceptionOutput;
     private final boolean fullCache;
     private final boolean existingIds;
+    private final boolean maxSegmentSize;
 
-    public WriteCachePutTest(Object output, Integer capacity, long ledgerId, long entryId, long maxCacheSize, boolean defaultEntry, boolean fullCache, boolean existingIds) {
+    public WriteCachePutTest(Object output, Integer capacity, long ledgerId, long entryId, long maxCacheSize, boolean defaultEntry, boolean fullCache, boolean existingIds, boolean maxSegmentSize) {
         if (output instanceof Class && Exception.class.isAssignableFrom((Class<?>) output)) {
             this.exceptionOutput = (Class<? extends Exception>) output;
         } else if (output instanceof Boolean) {
@@ -38,6 +39,7 @@ public class WriteCachePutTest {
         this.ledgerId = ledgerId;
         this.maxCacheSize = maxCacheSize;
         this.existingIds = existingIds;
+        this.maxSegmentSize = maxSegmentSize;
 
         if (capacity != null) {
             this.entry = Unpooled.buffer(capacity);
@@ -53,13 +55,13 @@ public class WriteCachePutTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] {
-                {IllegalArgumentException.class, 1024, 1, -1, 2048, false, false, true},
-                {IllegalArgumentException.class, 1024, -1, 1, 2048, false, false, true},
-                {true, 0, 1, 1, 2048, true, false, true},
-                {NullPointerException.class, null, 1, 1, 2048, false, false, true},
-                {false, 2048, 1, 1, 1024, false, true, true},
-                {true, 1024, 1, 1, 2048, false, false, true},
-                {true, 1024, 1, 1, 2048, false, false, false}
+                {IllegalArgumentException.class, 1024, 1, -1, 2048, false, false, true, false},
+                {IllegalArgumentException.class, 1024, -1, 1, 2048, false, false, true, false},
+                {true, 0, 1, 1, 2048, true, false, true, false},
+                {NullPointerException.class, null, 1, 1, 2048, false, false, true, false},
+                {false, 2048, 1, 1, 1024, false, true, true, false},
+                {true, 1024, 1, 1, 2048, false, false, true, true},
+                {true, 1024, 1, 1, 2048, false, false, false, false}
         });
     }
 
