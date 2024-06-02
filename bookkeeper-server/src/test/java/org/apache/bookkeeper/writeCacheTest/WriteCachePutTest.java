@@ -60,14 +60,18 @@ public class WriteCachePutTest {
                 {true, 0, 1, 1, 2048, true, false, true, false},
                 {NullPointerException.class, null, 1, 1, 2048, false, false, true, false},
                 {false, 2048, 1, 1, 1024, false, true, true, false},
-                {true, 1024, 1, 1, 2048, false, false, true, true},
-                {true, 1024, 1, 1, 2048, false, false, false, false}
+                {true, 1024, 1, 1, 2048, false, false, true, false},
+                {true, 1024, 1, 1, 2048, false, false, false, false},
+                {NullPointerException.class, 1024, 1, 1, 2048, false, false, true, true} // test case to improve branch coverage from 62% to 75% and statement coverage from 96% to 97%
         });
     }
 
     @Before
     public void setUp() {
-        writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize);
+        if (maxSegmentSize)
+            writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize, entry.capacity()/2);
+        else
+            writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize);
     }
 
     @Test
