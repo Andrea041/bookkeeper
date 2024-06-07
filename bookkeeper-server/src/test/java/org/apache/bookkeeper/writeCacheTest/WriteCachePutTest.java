@@ -14,6 +14,8 @@ import org.junit.runners.Parameterized;
 import java.util.Arrays;
 import java.util.Collection;
 
+import static org.mockito.Mockito.spy;
+
 @RunWith(Parameterized.class)
 public class WriteCachePutTest {
     private final ByteBuf entry;
@@ -26,6 +28,7 @@ public class WriteCachePutTest {
     private final boolean fullCache;
     private final boolean existingIds;
     private final boolean maxSegmentSize;
+    private int maxSegSize;
 
     public WriteCachePutTest(Object output, Integer capacity, long ledgerId, long entryId, long maxCacheSize, boolean defaultEntry, boolean fullCache, boolean existingIds, boolean maxSegmentSize) {
         if (output instanceof Class && Exception.class.isAssignableFrom((Class<?>) output)) {
@@ -50,6 +53,9 @@ public class WriteCachePutTest {
             this.entry = Unpooled.EMPTY_BUFFER;
         } else
             this.entry = null;
+
+        if (maxSegmentSize && capacity != null)
+            maxSegSize = entry.capacity()/2;
     }
 
     @Parameterized.Parameters
@@ -62,6 +68,7 @@ public class WriteCachePutTest {
                 {false, 2048, 1, 1, 1024, false, true, true, false},
                 {true, 1024, 1, 1, 2048, false, false, true, false},
                 {true, 1024, 1, 1, 2048, false, false, false, false},
+                // Test case added after JaCoCo results
                 {NullPointerException.class, 1024, 1, 1, 2048, false, false, true, true} // test case to improve branch coverage from 62% to 75% and statement coverage from 96% to 97%
         });
     }
@@ -69,9 +76,9 @@ public class WriteCachePutTest {
     @Before
     public void setUp() {
         if (maxSegmentSize)
-            writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize, entry.capacity()/2);
+            writeCache = spy(new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize, maxSegSize));
         else
-            writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize);
+            writeCache = spy(new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize));
     }
 
     @Test
@@ -79,10 +86,12 @@ public class WriteCachePutTest {
         boolean check;
         ByteBuf tempBuf;
         ByteBuf tempBufOverwrite;
+        long cacheCount = 0;
 
         if (fullCache) {
             entry.clear();
             entry.writeBytes(new byte[(int) (maxCacheSize + 1)]);
+            cacheCount = writeCache.count();
         }
 
         try {
@@ -99,12 +108,14 @@ public class WriteCachePutTest {
 
                 Assert.assertEquals(booleanOutput, check);
                 Assert.assertNotEquals(tempBuf.readableBytes(), tempBufOverwrite.readableBytes());
+                Assert.assertNotEquals(cacheCount, writeCache.count());
             } else if (!fullCache) {
                 /* This check is only for put test when cache is not full & the ids doesn't exist
                 * because it will not create any new buckets */
                 /* Check if the content is effectively written */
                 Assert.assertEquals(booleanOutput, check);
                 Assert.assertEquals(entry.readableBytes(), tempBuf.readableBytes());
+                Assert.assertNotEquals(cacheCount, writeCache.count());
             } else {
                 /* Cache is full and ids doesn't exist so there aren't new created bucket to check */
                 Assert.assertNull(tempBuf);

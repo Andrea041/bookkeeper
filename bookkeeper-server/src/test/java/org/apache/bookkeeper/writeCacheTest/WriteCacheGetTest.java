@@ -69,9 +69,10 @@ public class WriteCacheGetTest {
 
             entryRes = writeCache.get(ledgerId, entryId);
 
-            if (existingIds)
+            if (existingIds) {
                 Assert.assertEquals(outputBuffer, entryRes);
-            else
+                Assert.assertEquals(outputBuffer.readableBytes(), entryRes.readableBytes());
+            } else
                 Assert.assertNull(entryRes);
         } catch (IllegalArgumentException e) {
             Assert.assertEquals(exceptionOutput, e.getClass());
