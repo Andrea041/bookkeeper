@@ -1,6 +1,7 @@
 package org.apache.bookkeeper.bookie;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import org.apache.bookkeeper.bookie.fileUtils.Cases;
@@ -35,6 +36,7 @@ public class BufferedChannelReadTest {
     private boolean fileClose;
     private final static Path PATH = Paths.get("src/test/java/org/apache/bookkeeper/bookie/fileUtils/testRead.txt");
     private Cases env;
+    private ByteBufAllocator allocator;
 
     public BufferedChannelReadTest(ByteBuf dest, long pos, int length, Object output, FileStatus fileConstraints, Cases env) {
         this.dest = dest;
@@ -75,6 +77,7 @@ public class BufferedChannelReadTest {
                 {Unpooled.directBuffer(1024), 0, 1, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // reach 2 loop in while
                 {Unpooled.directBuffer(1024), 512, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // branch: if (readBytes <= 0)
                 {Unpooled.directBuffer(1024), 0, 1, 64, FileStatus.READ_WRITE, Cases.WRITE_INDEX_NOT0}, // branch else of if (readBytes == 0)
+                {Unpooled.directBuffer(1024), 0, 1, 0, FileStatus.READ_WRITE, Cases.NULL}   // writeBuffer == null
         });
     }
 
@@ -89,9 +92,13 @@ public class BufferedChannelReadTest {
         fc.write(buf.nioBuffer());
         fc.position(0);
 
-        bufferedChannel = spy(new BufferedChannel(UnpooledByteBufAllocator.DEFAULT, fc, capacity));
-
-        setEnv(env);
+        if (!env.equals(Cases.NULL)) {
+            bufferedChannel = spy(new BufferedChannel(UnpooledByteBufAllocator.DEFAULT, fc, capacity));
+            setEnv(env);
+        } else {
+            setEnv(env);
+            bufferedChannel = spy(new BufferedChannel(allocator, fc, capacity));
+        }
 
         if (fileClose)
             fc.close();
@@ -104,6 +111,7 @@ public class BufferedChannelReadTest {
             ret = bufferedChannel.read(dest, pos, length);
             Assert.assertEquals(intOutput, ret);
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             Assert.assertEquals(exceptionOutput, e.getClass());
         }
     }
@@ -139,10 +147,15 @@ public class BufferedChannelReadTest {
     private void setEnv(Cases env) {
         switch (env) {
             case START_POSITION_BIG:
+                /* Or you can move cursor in file, but is more simple in this way */
                 bufferedChannel.writeBufferStartPosition.set(1024);
                 break;
             case WRITE_INDEX_NOT0:
                 bufferedChannel.writeBuffer.writeBytes(new byte[64]);
+                break;
+            case NULL:
+                allocator = spy(UnpooledByteBufAllocator.DEFAULT);
+                when(allocator.directBuffer(anyInt())).thenReturn(null);
                 break;
         }
     }

@@ -131,6 +131,7 @@ public class BufferedChannelWriteTest {
                 long newFileSize = origFileSize + bufferedChannel.writeBuffer.capacity();
                 Assert.assertEquals(newFileSize, fc.size());
             } else if (unpersistedBytesBound > 0) {
+                System.out.println(bufferedChannel.unpersistedBytes.get());
                 if (unpersistedBytesBound == 1) {
                     /* Check that writeBuffer is empty -> all the content has to be flushed to the file */
                     Assert.assertEquals(0, bufferedChannel.writeBuffer.readableBytes());
@@ -148,15 +149,17 @@ public class BufferedChannelWriteTest {
                     /* Check the new file size, it is the full write buffer capacity, no flush() that is not needed */
                     long newFileSize = origFileSize + bufferedChannel.writeBuffer.capacity();
                     Assert.assertEquals(newFileSize, fc.size());
+
+                    verify(bufferedChannel).flush();
+                    Assert.assertTrue(bufferedChannel.unpersistedBytes.get() < unpersistedBytesBound);
                 }
             } else {
                 /* Check write buffer content: not yet flush bytes to the file */
                 Assert.assertEquals(src.readableBytes(), bufferedChannel.writeBuffer.readableBytes());
             }
 
-            /* Mutation killed */
-            if (src.readableBytes() != 0)
-                Assert.assertNotEquals(bufferedChannel.position, origPos);
+            /* Mutation kill: replaced addition with subtraction on line 135 */
+            Assert.assertTrue(bufferedChannel.position >= origPos);
         } catch (Exception e) {
             Assert.assertEquals(exception, e.getClass());
         }
