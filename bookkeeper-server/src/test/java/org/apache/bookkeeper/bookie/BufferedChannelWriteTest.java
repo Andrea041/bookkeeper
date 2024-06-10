@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
 
-import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.*;
 
 @RunWith(Parameterized.class)
 public class BufferedChannelWriteTest {
@@ -119,6 +119,7 @@ public class BufferedChannelWriteTest {
         try {
             int prevContent = bufferedChannel.writeBuffer.readableBytes();
             long origFileSize = fc.size();
+            long origPos = bufferedChannel.position();
             bufferedChannel.write(src);
 
             if (runOutBuffer && unpersistedBytesBound == 0) {
@@ -137,6 +138,9 @@ public class BufferedChannelWriteTest {
                     /* Check the new file size, it is the full write buffer capacity + all bytes to write in src buffer */
                     long newFileSize = origFileSize + prevContent + bytesToWrite;
                     Assert.assertEquals(newFileSize, fc.size());
+
+                    verify(bufferedChannel).forceWrite(false);
+                    verify(bufferedChannel, times(2)).flush();
                 }
                 else {
                     Assert.assertNotEquals(0, bufferedChannel.writeBuffer.readableBytes());
@@ -149,6 +153,10 @@ public class BufferedChannelWriteTest {
                 /* Check write buffer content: not yet flush bytes to the file */
                 Assert.assertEquals(src.readableBytes(), bufferedChannel.writeBuffer.readableBytes());
             }
+
+            /* Mutation killed */
+            if (src.readableBytes() != 0)
+                Assert.assertNotEquals(bufferedChannel.position, origPos);
         } catch (Exception e) {
             Assert.assertEquals(exception, e.getClass());
         }

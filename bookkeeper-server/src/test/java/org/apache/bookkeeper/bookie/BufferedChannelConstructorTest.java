@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Set;
 
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 @RunWith(Parameterized.class)
 public class BufferedChannelConstructorTest {
@@ -75,6 +76,7 @@ public class BufferedChannelConstructorTest {
     public void test() {
         try {
             bufferedChannel = spy(new BufferedChannel(allocator, fc, writeCapacity, readCapacity, unpersistedBytesBound));
+            verify(bufferedChannel.writeBufferStartPosition).set(bufferedChannel.position);
             Assert.assertNotNull(bufferedChannel);
         } catch (Exception e) {
             Assert.assertEquals(exceptionOutput, e.getClass());
