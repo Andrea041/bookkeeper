@@ -3,11 +3,9 @@ package org.apache.bookkeeper.bookie;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import org.apache.bookkeeper.bookie.fileUtils.Cases;
 import org.apache.bookkeeper.bookie.fileUtils.FileStatus;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -36,9 +34,10 @@ public class BufferedChannelReadTest {
     private FileChannel fc;
     private Set<PosixFilePermission> originalPermissions;
     private boolean fileClose;
-    private final static Path PATH = Paths.get("src/test/java/org/apache/bookkeeper/bookie/fileUtils/test.txt");
+    private final static Path PATH = Paths.get("src/test/java/org/apache/bookkeeper/bookie/fileUtils/testRead.txt");
+    private Cases env;
 
-    public BufferedChannelReadTest(ByteBuf dest, long pos, int length, Object output, FileStatus fileConstraints) {
+    public BufferedChannelReadTest(ByteBuf dest, long pos, int length, Object output, FileStatus fileConstraints, Cases env) {
         this.dest = dest;
         this.pos = pos;
         this.length = length;
@@ -48,28 +47,35 @@ public class BufferedChannelReadTest {
             this.exceptionOutput = (Class<? extends Exception>) output;
         else
             this.intOutput = (int) output;
+
+        this.env = env;
     }
 
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
-        // test file size is 445 bytes
+        // test file size is 512 bytes
         return Arrays.asList(new Object[][] {
-                {null, 1, 1, NullPointerException.class, FileStatus.READ_WRITE},
-                {Unpooled.directBuffer(1024), 1, 1, 444, FileStatus.READ_WRITE},
-                {Unpooled.directBuffer(1024), 0, 1, 445, FileStatus.READ_WRITE},
-                {Unpooled.directBuffer(1024), 1, -1, 0, FileStatus.READ_WRITE},
-                {Unpooled.directBuffer(1024), 0, 0, 0, FileStatus.READ_WRITE},
-                {Unpooled.directBuffer(1024), -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},
+                {null, 1, 1, NullPointerException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), 1, -1, 0, FileStatus.READ_WRITE, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), 0, 0, 0, FileStatus.READ_WRITE, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
                 /* These tests spot an infinite loop if the buffer is empty */
                 /*{Unpooled.EMPTY_BUFFER, 0, 1, IOException.class, FileStatus.READ_WRITE},
                 {Unpooled.EMPTY_BUFFER, 0, 0, IOException.class, FileStatus.READ_WRITE},
                 {Unpooled.EMPTY_BUFFER, 1, -1, 0, FileStatus.READ_WRITE},
                 {Unpooled.EMPTY_BUFFER, -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},
                 {Unpooled.EMPTY_BUFFER, 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},*/
-                {Unpooled.directBuffer(1024), 0, 1, NonReadableChannelException.class, FileStatus.ONLY_WRITE},
+                {Unpooled.directBuffer(1024), 0, 1, NonReadableChannelException.class, FileStatus.ONLY_WRITE, Cases.START_POSITION_BIG},
                 /* Not testable on read because FileChannel throws an exception java.nio.file.AccessDeniedException */
                 //{Unpooled.directBuffer(1024), 0, 1, AccessDeniedException.class, FileStatus.NO_PERMISSION},
-                {Unpooled.directBuffer(1024), 0, 1, ClosedChannelException.class, FileStatus.CLOSE_CHANNEL}
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.CLOSE_CHANNEL, Cases.DEFAULT},
+                // Test cases added after JaCoCo
+                {Unpooled.directBuffer(1024), 0, 1, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},
+                {Unpooled.directBuffer(1024), 512, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // branch: if (readBytes <= 0)
+                {Unpooled.directBuffer(1024), 0, 1, 64, FileStatus.READ_WRITE, Cases.WRITE_INDEX_NOT0}, // branch else of if (readBytes == 0)
+                {Unpooled.directBuffer(1024), 0, 256, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},    // reach 2 loop in while
         });
     }
 
@@ -78,17 +84,22 @@ public class BufferedChannelReadTest {
         int capacity = 1024;
         setParam(fileConstraints);
 
+        /* set up file and write 256 bytes on it */
+        ByteBuf buf = Unpooled.buffer(capacity);
+        buf.writeBytes(new byte[256]);
+        fc.write(buf.nioBuffer());
+        fc.position(0);
+
         bufferedChannel = spy(new BufferedChannel(UnpooledByteBufAllocator.DEFAULT, fc, capacity));
 
         /* We have to set up different environments to test read:
-        * 1) writeBuffer is no empty
+        * 1) dest is full
         * 2) readBuffer is no empty
         * 3) writeBuffer is null
-        * 4) general case were we read to FileChannel */
+        * 4) general case were we read to FileChannel
+        * 5) writeBufferStartPosition (value: 0) <= pos */
 
-        // implement switch
-        // 4th case:
-        bufferedChannel.writeBufferStartPosition.set(10);
+        setEnv(env);
 
         if (fileClose)
             fc.close();
@@ -127,8 +138,22 @@ public class BufferedChannelReadTest {
                 fc = FileChannel.open(PATH, StandardOpenOption.CREATE);
                 break;
             case CLOSE_CHANNEL:
-                fc = FileChannel.open(PATH, StandardOpenOption.CREATE);
+                fc = FileChannel.open(PATH, StandardOpenOption.WRITE);
                 fileClose = true;
+                break;
+        }
+    }
+
+    private void setEnv(Cases env) {
+        switch (env) {
+            case START_POSITION_BIG:
+                bufferedChannel.writeBufferStartPosition.set(1024);
+                break;
+            case FULL_BUFFER:
+                dest.writeBytes(new byte[dest.capacity()]);
+                break;
+            case WRITE_INDEX_NOT0:
+                bufferedChannel.writeBuffer.writeBytes(new byte[64]);
                 break;
         }
     }
@@ -136,6 +161,8 @@ public class BufferedChannelReadTest {
     @After
     public void tearDown() throws IOException {
         if (fc != null && fc.isOpen()) {
+            if (!fileConstraints.equals(FileStatus.ONLY_READ))
+                fc.truncate(0);
             fc.close();
         }
         if (bufferedChannel != null) {

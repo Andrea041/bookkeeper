@@ -1,9 +1,8 @@
-package org.apache.bookkeeper.writeCacheTest;
+package org.apache.bookkeeper.bookie.storage.ldb;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
-import org.apache.bookkeeper.bookie.storage.ldb.WriteCache;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -13,6 +12,8 @@ import org.junit.runners.Parameterized;
 
 import java.util.Arrays;
 import java.util.Collection;
+
+import static org.mockito.Mockito.spy;
 
 @RunWith(Parameterized.class)
 public class WriteCacheGetTest {
@@ -56,7 +57,7 @@ public class WriteCacheGetTest {
     @Before
     public void setUp() {
         long maxCacheSize = 1024;
-        writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize);
+        writeCache = spy(new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize));
     }
 
     @Test

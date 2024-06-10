@@ -1,7 +1,6 @@
 package org.apache.bookkeeper.bookie;
 
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import org.apache.bookkeeper.bookie.fileUtils.FileStatus;
 import org.junit.After;

@@ -1,9 +1,8 @@
-package org.apache.bookkeeper.writeCacheTest;
+package org.apache.bookkeeper.bookie.storage.ldb;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
-import org.apache.bookkeeper.bookie.storage.ldb.WriteCache;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -69,7 +68,7 @@ public class WriteCachePutTest {
                 {true, 1024, 1, 1, 2048, false, false, true, false},
                 {true, 1024, 1, 1, 2048, false, false, false, false},
                 // Test case added after JaCoCo results
-                {NullPointerException.class, 1024, 1, 1, 2048, false, false, true, true} // test case to improve branch coverage from 62% to 75% and statement coverage from 96% to 97%
+                {NullPointerException.class, 1024, 1, 1, 2048, false, false, true, true} // test case added to improve branch coverage from 62% to 75% and statement coverage from 96% to 97%
         });
     }
 
@@ -108,7 +107,7 @@ public class WriteCachePutTest {
 
                 Assert.assertEquals(booleanOutput, check);
                 Assert.assertNotEquals(tempBuf.readableBytes(), tempBufOverwrite.readableBytes());
-                Assert.assertNotEquals(cacheCount, writeCache.count());
+                Assert.assertNotEquals(cacheCount, writeCache.count()); // assert added to improve test strength from 68% to 71%
             } else if (!fullCache) {
                 /* This check is only for put test when cache is not full & the ids doesn't exist
                 * because it will not create any new buckets */
