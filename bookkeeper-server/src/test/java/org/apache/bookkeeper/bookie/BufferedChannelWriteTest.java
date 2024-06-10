@@ -60,8 +60,6 @@ public class BufferedChannelWriteTest {
         return Arrays.asList(new Object[][] {
                 {null, NullPointerException.class, FileStatus.READ_WRITE, false, false, 0},
                 {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 0},
-                /* Not throws NonWritableChannelException, only write in writeBuffer */
-                //{Unpooled.directBuffer(1024), NonWritableChannelException.class, FileStatus.ONLY_READ, false},
                 /* Only read file channel, but we didn't flush anything to the file, so we didn't spot the exception */
                 {Unpooled.directBuffer(1024), null, FileStatus.ONLY_READ, false, false, 0},
                 {Unpooled.directBuffer(1024), ClosedChannelException.class, FileStatus.CLOSE_CHANNEL, false, false, 0},
@@ -71,10 +69,13 @@ public class BufferedChannelWriteTest {
                 //{Unpooled.directBuffer(1024), AccessDeniedException.class, FileStatus.NO_PERMISSION, false},
                 /* Adding test cases after JaCoCo report */
                 {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, true, 0},
+                /* Now we flush to the file (open in only read), so we spot the exception */
                 {Unpooled.directBuffer(1024), NonWritableChannelException.class, FileStatus.ONLY_READ, false, true, 0},
                 {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 1},
                 // Test case added after JaCoCo to cover else branch on if (unpersistedBytes.get() >= unpersistedBytesBound)
-                {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 2048}
+                {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 2048},
+                // Test case added after Ba-Dua to cover one def-use -> now only 2 miss
+                {Unpooled.EMPTY_BUFFER, null, FileStatus.READ_WRITE, false, false, 2048},
         });
     }
 
@@ -131,7 +132,6 @@ public class BufferedChannelWriteTest {
                 long newFileSize = origFileSize + bufferedChannel.writeBuffer.capacity();
                 Assert.assertEquals(newFileSize, fc.size());
             } else if (unpersistedBytesBound > 0) {
-                System.out.println(bufferedChannel.unpersistedBytes.get());
                 if (unpersistedBytesBound == 1) {
                     /* Check that writeBuffer is empty -> all the content has to be flushed to the file */
                     Assert.assertEquals(0, bufferedChannel.writeBuffer.readableBytes());
@@ -140,6 +140,7 @@ public class BufferedChannelWriteTest {
                     long newFileSize = origFileSize + prevContent + bytesToWrite;
                     Assert.assertEquals(newFileSize, fc.size());
 
+                    /* Mutation kill: negated conditional on line 144 */
                     verify(bufferedChannel).forceWrite(false);
                     verify(bufferedChannel, times(2)).flush();
                 }
@@ -147,11 +148,13 @@ public class BufferedChannelWriteTest {
                     Assert.assertNotEquals(0, bufferedChannel.writeBuffer.readableBytes());
 
                     /* Check the new file size, it is the full write buffer capacity, no flush() that is not needed */
-                    long newFileSize = origFileSize + bufferedChannel.writeBuffer.capacity();
-                    Assert.assertEquals(newFileSize, fc.size());
+                    if (src.capacity() != 0) {
+                        long newFileSize = origFileSize + bufferedChannel.writeBuffer.capacity();
+                        Assert.assertEquals(newFileSize, fc.size());
 
-                    verify(bufferedChannel).flush();
-                    Assert.assertTrue(bufferedChannel.unpersistedBytes.get() < unpersistedBytesBound);
+                        verify(bufferedChannel).flush();
+                        Assert.assertTrue(bufferedChannel.unpersistedBytes.get() > 0);
+                    }
                 }
             } else {
                 /* Check write buffer content: not yet flush bytes to the file */
