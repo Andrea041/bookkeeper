@@ -10,7 +10,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
-import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.NonReadableChannelException;
 import java.nio.file.*;
@@ -56,26 +55,26 @@ public class BufferedChannelReadTest {
         // test file size is 512 bytes
         return Arrays.asList(new Object[][] {
                 {null, 1, 1, NullPointerException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
-                {Unpooled.directBuffer(1024), 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
-                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT}, // - reliability T2
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.READ_WRITE, Cases.DEFAULT}, // - reliability T3, copre if (readBytes == 0) read past EOF
                 {Unpooled.directBuffer(1024), 1, -1, 0, FileStatus.READ_WRITE, Cases.DEFAULT},
                 {Unpooled.directBuffer(1024), 0, 0, 0, FileStatus.READ_WRITE, Cases.DEFAULT},
                 {Unpooled.directBuffer(1024), -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
                 /* These tests spot an infinite loop if the buffer is empty */
-                /*{Unpooled.EMPTY_BUFFER, 0, 1, IOException.class, FileStatus.READ_WRITE},
-                {Unpooled.EMPTY_BUFFER, 0, 0, IOException.class, FileStatus.READ_WRITE},
-                {Unpooled.EMPTY_BUFFER, 1, -1, 0, FileStatus.READ_WRITE},
-                {Unpooled.EMPTY_BUFFER, -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},
-                {Unpooled.EMPTY_BUFFER, 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},*/
+                /*{Unpooled.EMPTY_BUFFER, 0, 1, IOException.class, FileStatus.READ_WRITE},  - reliability T7
+                {Unpooled.EMPTY_BUFFER, 0, 0, IOException.class, FileStatus.READ_WRITE},    - reliability T8
+                {Unpooled.EMPTY_BUFFER, 1, -1, 0, FileStatus.READ_WRITE},   - reliability T9
+                {Unpooled.EMPTY_BUFFER, -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},  - reliability T10
+                {Unpooled.EMPTY_BUFFER, 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},   - reliability T11
+                */
                 {Unpooled.directBuffer(1024), 0, 1, NonReadableChannelException.class, FileStatus.ONLY_WRITE, Cases.START_POSITION_BIG},
                 /* Not testable on read because FileChannel throws an exception java.nio.file.AccessDeniedException */
                 //{Unpooled.directBuffer(1024), 0, 1, AccessDeniedException.class, FileStatus.NO_PERMISSION},
                 {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.CLOSE_CHANNEL, Cases.DEFAULT},
                 // Test cases added after JaCoCo
-                {Unpooled.directBuffer(1024), 0, 1, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},
+                {Unpooled.directBuffer(1024), 0, 1, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // reach 2 loop in while
                 {Unpooled.directBuffer(1024), 512, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // branch: if (readBytes <= 0)
                 {Unpooled.directBuffer(1024), 0, 1, 64, FileStatus.READ_WRITE, Cases.WRITE_INDEX_NOT0}, // branch else of if (readBytes == 0)
-                {Unpooled.directBuffer(1024), 0, 256, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},    // reach 2 loop in while
         });
     }
 
@@ -91,13 +90,6 @@ public class BufferedChannelReadTest {
         fc.position(0);
 
         bufferedChannel = spy(new BufferedChannel(UnpooledByteBufAllocator.DEFAULT, fc, capacity));
-
-        /* We have to set up different environments to test read:
-        * 1) dest is full
-        * 2) readBuffer is no empty
-        * 3) writeBuffer is null
-        * 4) general case were we read to FileChannel
-        * 5) writeBufferStartPosition (value: 0) <= pos */
 
         setEnv(env);
 
@@ -148,9 +140,6 @@ public class BufferedChannelReadTest {
         switch (env) {
             case START_POSITION_BIG:
                 bufferedChannel.writeBufferStartPosition.set(1024);
-                break;
-            case FULL_BUFFER:
-                dest.writeBytes(new byte[dest.capacity()]);
                 break;
             case WRITE_INDEX_NOT0:
                 bufferedChannel.writeBuffer.writeBytes(new byte[64]);
