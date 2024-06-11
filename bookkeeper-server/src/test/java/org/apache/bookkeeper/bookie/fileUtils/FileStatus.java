@@ -7,5 +7,6 @@ public enum FileStatus {
     NO_PERMISSION,
     CLOSE_CHANNEL,
     CREATE,
+    EMPTY,
     NULL
 }

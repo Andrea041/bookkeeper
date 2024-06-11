@@ -73,11 +73,12 @@ public class BufferedChannelReadTest {
                 /* Not testable on read because FileChannel throws an exception java.nio.file.AccessDeniedException */
                 //{Unpooled.directBuffer(1024), 0, 1, AccessDeniedException.class, FileStatus.NO_PERMISSION},
                 {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.CLOSE_CHANNEL, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.EMPTY, Cases.START_POSITION_BIG},  // throws IOException if file is empty
                 // Test cases added after JaCoCo
                 {Unpooled.directBuffer(1024), 0, 1, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // reach 2 loop in while
                 {Unpooled.directBuffer(1024), 512, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // branch: if (readBytes <= 0)
                 {Unpooled.directBuffer(1024), 0, 1, 64, FileStatus.READ_WRITE, Cases.WRITE_INDEX_NOT0}, // branch else of if (readBytes == 0)
-                {Unpooled.directBuffer(1024), 0, 1, 0, FileStatus.READ_WRITE, Cases.NULL}   // writeBuffer == null
+                {Unpooled.directBuffer(1024), 0, 1, 0, FileStatus.READ_WRITE, Cases.NULL},   // writeBuffer == null
         });
     }
 
@@ -87,10 +88,12 @@ public class BufferedChannelReadTest {
         setParam(fileConstraints);
 
         /* set up file and write 256 bytes on it */
-        ByteBuf buf = Unpooled.buffer(capacity);
-        buf.writeBytes(new byte[256]);
-        fc.write(buf.nioBuffer());
-        fc.position(0);
+        if (!fileConstraints.equals(FileStatus.EMPTY)) {
+            ByteBuf buf = Unpooled.buffer(capacity);
+            buf.writeBytes(new byte[256]);
+            fc.write(buf.nioBuffer());
+            fc.position(0);
+        }
 
         if (!env.equals(Cases.NULL)) {
             bufferedChannel = spy(new BufferedChannel(UnpooledByteBufAllocator.DEFAULT, fc, capacity));
@@ -111,7 +114,6 @@ public class BufferedChannelReadTest {
             ret = bufferedChannel.read(dest, pos, length);
             Assert.assertEquals(intOutput, ret);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
             Assert.assertEquals(exceptionOutput, e.getClass());
         }
     }
@@ -140,6 +142,9 @@ public class BufferedChannelReadTest {
             case CLOSE_CHANNEL:
                 fc = FileChannel.open(PATH, StandardOpenOption.WRITE);
                 fileClose = true;
+                break;
+            case EMPTY:
+                fc = FileChannel.open(PATH, StandardOpenOption.WRITE, StandardOpenOption.READ);
                 break;
         }
     }
