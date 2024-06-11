@@ -21,8 +21,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
 
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @RunWith(Parameterized.class)
 public class BufferedChannelConstructorTest {
@@ -70,6 +69,7 @@ public class BufferedChannelConstructorTest {
                 {UnpooledByteBufAllocator.DEFAULT, FileStatus.CLOSE_CHANNEL, 1, 1, 1, ClosedChannelException.class, false},
                 {UnpooledByteBufAllocator.DEFAULT, FileStatus.CREATE, 1, 1, 1, null, false},
                 {UnpooledByteBufAllocator.DEFAULT, FileStatus.CREATE, 1, 1, 1, null, false},
+                {getInvalidAllocator(), FileStatus.CREATE, 1, 1, 1, NullPointerException.class, false},
                 /* Not testable on constructor because FileChannel throws an exception java.nio.file.AccessDeniedException */
                 //{UnpooledByteBufAllocator.DEFAULT, FileStatus.NO_PERMISSION, 1, 1, 1, AccessDeniedException.class}
                 // Test added after PIT report to remove mutation on unchecked set(position) call -> set fc.position not 0
@@ -126,6 +126,13 @@ public class BufferedChannelConstructorTest {
                 fc = null;
                 break;
         }
+    }
+
+    private static ByteBufAllocator getInvalidAllocator() {
+        ByteBufAllocator invalidAllocator = mock(ByteBufAllocator.class);
+
+        when(invalidAllocator.directBuffer(anyInt())).thenReturn(null);
+        return invalidAllocator;
     }
 
     @After

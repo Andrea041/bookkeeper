@@ -73,7 +73,7 @@ public class BufferedChannelReadTest {
                 /* Not testable on read because FileChannel throws an exception java.nio.file.AccessDeniedException */
                 //{Unpooled.directBuffer(1024), 0, 1, AccessDeniedException.class, FileStatus.NO_PERMISSION},
                 {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.CLOSE_CHANNEL, Cases.DEFAULT},
-                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.EMPTY, Cases.START_POSITION_BIG},  // throws IOException if file is empty
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.EMPTY, Cases.DEFAULT},  // throws IOException if file is empty
                 // Test cases added after JaCoCo
                 {Unpooled.directBuffer(1024), 0, 1, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // reach 2 loop in while
                 {Unpooled.directBuffer(1024), 512, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // branch: if (readBytes <= 0)
