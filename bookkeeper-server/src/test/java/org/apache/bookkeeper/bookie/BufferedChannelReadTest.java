@@ -57,28 +57,33 @@ public class BufferedChannelReadTest {
         // test file size is 512 bytes
         return Arrays.asList(new Object[][] {
                 {null, 1, 1, NullPointerException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
-                {Unpooled.directBuffer(1024), 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT}, // - reliability T2
-                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.READ_WRITE, Cases.DEFAULT}, // - reliability T3, copre if (readBytes == 0) read past EOF
+                {Unpooled.directBuffer(1024), 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT}, // - unexpected T2
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.READ_WRITE, Cases.DEFAULT}, // - unexpected T3, covered if (readBytes == 0) read past EOF
                 {Unpooled.directBuffer(1024), 1, -1, 0, FileStatus.READ_WRITE, Cases.DEFAULT},
                 {Unpooled.directBuffer(1024), 0, 0, 0, FileStatus.READ_WRITE, Cases.DEFAULT},
                 {Unpooled.directBuffer(1024), -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},
                 /* These tests spot an infinite loop if the buffer is empty */
-                /*{Unpooled.EMPTY_BUFFER, 0, 1, IOException.class, FileStatus.READ_WRITE},  - reliability T7
-                {Unpooled.EMPTY_BUFFER, 0, 0, IOException.class, FileStatus.READ_WRITE},    - reliability T8
+                /*{Unpooled.EMPTY_BUFFER, 0, 1, IOException.class, FileStatus.READ_WRITE},  - unexpected T7
+                {Unpooled.EMPTY_BUFFER, 0, 0, IOException.class, FileStatus.READ_WRITE},    - unexpected T8
                 {Unpooled.EMPTY_BUFFER, 1, -1, 0, FileStatus.READ_WRITE},   - reliability T9
-                {Unpooled.EMPTY_BUFFER, -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},  - reliability T10
-                {Unpooled.EMPTY_BUFFER, 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},   - reliability T11
+                {Unpooled.EMPTY_BUFFER, -1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},  - unexpected T10
+                {Unpooled.EMPTY_BUFFER, 1, 1, IllegalArgumentException.class, FileStatus.READ_WRITE},   - unexpected T11
                 */
-                {Unpooled.directBuffer(1024), 0, 1, NonReadableChannelException.class, FileStatus.ONLY_WRITE, Cases.START_POSITION_BIG},
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.ONLY_WRITE, Cases.DEFAULT},
                 /* Not testable on read because FileChannel throws an exception java.nio.file.AccessDeniedException */
                 //{Unpooled.directBuffer(1024), 0, 1, AccessDeniedException.class, FileStatus.NO_PERMISSION},
                 {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.CLOSE_CHANNEL, Cases.DEFAULT},
                 {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.EMPTY, Cases.DEFAULT},  // throws IOException if file is empty
+                {Unpooled.directBuffer(1024), 257, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},    // - unexpected T16
+                {Unpooled.directBuffer(1024), 256, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},    // - unexpected T17
+                {Unpooled.directBuffer(1024), 255, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},    // - unexpected T18
                 // Test cases added after JaCoCo
                 {Unpooled.directBuffer(1024), 0, 1, 256, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // reach 2 loop in while
-                {Unpooled.directBuffer(1024), 512, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // branch: if (readBytes <= 0)
                 {Unpooled.directBuffer(1024), 0, 1, 64, FileStatus.READ_WRITE, Cases.WRITE_INDEX_NOT0}, // branch else of if (readBytes == 0)
                 {Unpooled.directBuffer(1024), 0, 1, 0, FileStatus.READ_WRITE, Cases.NULL},   // writeBuffer == null
+                {Unpooled.directBuffer(1024), 257, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},  // branch: if (readBytes <= 0)
+                {Unpooled.directBuffer(1024), 256, 1, IOException.class, FileStatus.READ_WRITE, Cases.START_POSITION_BIG},
+                {Unpooled.directBuffer(1024), 255, 1, 1, FileStatus.READ_WRITE, Cases.START_POSITION_BIG}
         });
     }
 
