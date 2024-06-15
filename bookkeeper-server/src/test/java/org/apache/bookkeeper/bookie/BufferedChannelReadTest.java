@@ -12,7 +12,6 @@ import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;
-import java.nio.channels.NonReadableChannelException;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -72,7 +71,7 @@ public class BufferedChannelReadTest {
                 {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.ONLY_WRITE, Cases.DEFAULT},
                 /* Not testable on read because FileChannel throws an exception java.nio.file.AccessDeniedException */
                 //{Unpooled.directBuffer(1024), 0, 1, AccessDeniedException.class, FileStatus.NO_PERMISSION},
-                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.CLOSE_CHANNEL, Cases.DEFAULT},
+                {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.CLOSE_CHANNEL, Cases.DEFAULT},    // - unexpected T14
                 {Unpooled.directBuffer(1024), 0, 1, IOException.class, FileStatus.EMPTY, Cases.DEFAULT},  // throws IOException if file is empty
                 {Unpooled.directBuffer(1024), 257, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},    // - unexpected T16
                 {Unpooled.directBuffer(1024), 256, 1, IllegalArgumentException.class, FileStatus.READ_WRITE, Cases.DEFAULT},    // - unexpected T17

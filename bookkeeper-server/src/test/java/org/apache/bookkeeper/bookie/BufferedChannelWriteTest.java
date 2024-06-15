@@ -61,7 +61,7 @@ public class BufferedChannelWriteTest {
                 {null, NullPointerException.class, FileStatus.READ_WRITE, false, false, 0},
                 {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 0},
                 /* Only read file channel, but we didn't flush anything to the file, so we didn't spot the exception */
-                {Unpooled.directBuffer(1024), null, FileStatus.ONLY_READ, false, false, 0},
+                {Unpooled.directBuffer(1024), null, FileStatus.ONLY_READ, false, false, 0}, // - unexpected T3
                 {Unpooled.directBuffer(1024), ClosedChannelException.class, FileStatus.CLOSE_CHANNEL, false, false, 0},
                 {Unpooled.directBuffer(1024), IllegalReferenceCountException.class, FileStatus.READ_WRITE, true, false, 0},    // Test case to simulate deallocated buffer
                 {Unpooled.EMPTY_BUFFER, null, FileStatus.READ_WRITE, false, false, 0},
@@ -72,8 +72,7 @@ public class BufferedChannelWriteTest {
                 /* Now we flush to the file (open in only read), so we spot the exception */
                 {Unpooled.directBuffer(1024), NonWritableChannelException.class, FileStatus.ONLY_READ, false, true, 0},
                 {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 1},
-                // Test case added after JaCoCo to cover else branch on if (unpersistedBytes.get() >= unpersistedBytesBound)
-                {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 2048},
+                {Unpooled.directBuffer(1024), null, FileStatus.READ_WRITE, false, false, 2048}, // Test case added to cover else branch on if (unpersistedBytes.get() >= unpersistedBytesBound)
                 // Test case added after Ba-Dua to cover one def-use -> now only 2 miss
                 {Unpooled.EMPTY_BUFFER, null, FileStatus.READ_WRITE, false, false, 2048},
         });

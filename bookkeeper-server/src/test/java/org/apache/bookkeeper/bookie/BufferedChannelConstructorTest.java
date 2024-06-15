@@ -83,6 +83,8 @@ public class BufferedChannelConstructorTest {
 
         if (fileClose)
             fc.close();
+
+        /* added after pit */
         if (changeStartPosition)
             fc.position(12);
     }
