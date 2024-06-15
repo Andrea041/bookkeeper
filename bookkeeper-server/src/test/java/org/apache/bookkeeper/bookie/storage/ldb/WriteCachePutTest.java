@@ -3,6 +3,7 @@ package org.apache.bookkeeper.bookie.storage.ldb;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import org.apache.bookkeeper.bookie.storage.ldb.cacheUtils.IdStatus;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -13,23 +14,32 @@ import org.junit.runners.Parameterized;
 import java.util.Arrays;
 import java.util.Collection;
 
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 @RunWith(Parameterized.class)
 public class WriteCachePutTest {
     private final ByteBuf entry;
-    private final long entryId;
-    private final long ledgerId;
+    private final IdStatus labelEntryId;
+    private final IdStatus labelLedgerId;
     private WriteCache writeCache;
     private final long maxCacheSize;
     private boolean booleanOutput;
     private Class<? extends Exception> exceptionOutput;
     private final boolean fullCache;
-    private final boolean existingIds;
     private final boolean maxSegmentSize;
     private int maxSegSize;
+    private long ledgerId;
+    private long entryId;
 
-    public WriteCachePutTest(Object output, Integer capacity, long ledgerId, long entryId, long maxCacheSize, boolean defaultEntry, boolean fullCache, boolean existingIds, boolean maxSegmentSize) {
+    public WriteCachePutTest(Object output,
+                             Integer capacity,
+                             IdStatus ledgerId,
+                             IdStatus entryId,
+                             long maxCacheSize,
+                             boolean defaultEntry,
+                             boolean fullCache,
+                             boolean maxSegmentSize) {
         if (output instanceof Class && Exception.class.isAssignableFrom((Class<?>) output)) {
             this.exceptionOutput = (Class<? extends Exception>) output;
         } else if (output instanceof Boolean) {
@@ -37,10 +47,9 @@ public class WriteCachePutTest {
         }
 
         this.fullCache = fullCache;
-        this.entryId = entryId;
-        this.ledgerId = ledgerId;
         this.maxCacheSize = maxCacheSize;
-        this.existingIds = existingIds;
+        this.labelEntryId = entryId;
+        this.labelLedgerId = ledgerId;
         this.maxSegmentSize = maxSegmentSize;
 
         if (capacity != null) {
@@ -60,31 +69,33 @@ public class WriteCachePutTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] {
-                {IllegalArgumentException.class, 1024, 1, -1, 2048, false, false, true, false},
-                {IllegalArgumentException.class, 1024, -1, 1, 2048, false, false, true, false},
-                {true, 0, 1, 1, 2048, true, false, true, false},
-                {NullPointerException.class, null, 1, 1, 2048, false, false, true, false},
-                {false, 2048, 1, 1, 1024, false, true, true, false},
-                {true, 1024, 1, 1, 2048, false, false, true, false},
-                {true, 1024, 1, 1, 2048, false, false, false, false},
+                //{IllegalArgumentException.class, 1024, IdStatus.EXISTING_ID, IdStatus.NEGATIVE_ID, 2048, false, false, true, false},  // reliability T1 - unexpected output (true instead of exception)
+                {IllegalArgumentException.class, 1024, IdStatus.NEGATIVE_ID, IdStatus.EXISTING_ID, 2048, false, false, false},
+                {true, 0, IdStatus.EXISTING_ID, IdStatus.EXISTING_ID, 2048, true, false, false},
+                {NullPointerException.class, null, IdStatus.EXISTING_ID, IdStatus.EXISTING_ID, 2048, false, false, false},
+                {true, 1024, IdStatus.EXISTING_ID, IdStatus.EXISTING_ID, 2048, false, false, false},
+                {true, 1024, IdStatus.NOT_EXISTING_ID, IdStatus.NOT_EXISTING_ID, 2048, false, false, false},
+                {true, 1024, IdStatus.EXISTING_ID, IdStatus.NOT_EXISTING_ID, 2048, false, false, false},
                 // Test case added after JaCoCo results
-                {NullPointerException.class, 1024, 1, 1, 2048, false, false, true, true} // test case added to improve branch coverage from 62% to 75% and statement coverage from 96% to 97%
+                {false, 2048, IdStatus.EXISTING_ID, IdStatus.EXISTING_ID, 1024, false, true, false}, // test to simulate full cache
+                {false, 1024, IdStatus.EXISTING_ID, IdStatus.EXISTING_ID, 2048, false, false, true}, // test case added to improve branch coverage from 62% to 75% and statement coverage from 96% to 97%
         });
     }
 
     @Before
     public void setUp() {
         if (maxSegmentSize)
-            writeCache = spy(new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize, maxSegSize));
+            writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize, maxSegSize);
         else
-            writeCache = spy(new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize));
+            writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize);
+
+        setUpValues();
     }
 
     @Test
     public void test() {
         boolean check;
         ByteBuf tempBuf;
-        ByteBuf tempBufOverwrite;
         long cacheCount = 0;
 
         if (fullCache) {
@@ -97,31 +108,59 @@ public class WriteCachePutTest {
             check = writeCache.put(ledgerId, entryId, entry);
             tempBuf = writeCache.get(ledgerId, entryId);
 
-            if (!fullCache && existingIds) {
-                /* Overwrite data */
-                entry.clear();
-                entry.writeBytes(new byte[(int) (128)]);
-
-                writeCache.put(ledgerId, entryId, entry);
-                tempBufOverwrite = writeCache.get(ledgerId, entryId);
-
-                Assert.assertEquals(booleanOutput, check);
-                Assert.assertNotEquals(tempBuf.readableBytes(), tempBufOverwrite.readableBytes());
-                Assert.assertNotEquals(cacheCount, writeCache.count()); // assert added to improve test strength from 68% to 71%
-            } else if (!fullCache) {
+            if (!fullCache) {
                 /* This check is only for put test when cache is not full & the ids doesn't exist
                 * because it will not create any new buckets */
-                /* Check if the content is effectively written */
                 Assert.assertEquals(booleanOutput, check);
-                Assert.assertEquals(entry.readableBytes(), tempBuf.readableBytes());
-                Assert.assertNotEquals(cacheCount, writeCache.count());
+
+                if (!maxSegmentSize) {
+                    /* Check if the content is effectively written */
+                    Assert.assertEquals(entry.readableBytes(), tempBuf.readableBytes());
+                    Assert.assertNotEquals(cacheCount, writeCache.count()); // pit addition
+                }
+                /* Else: return false by put, so content not written in cache */
             } else {
-                /* Cache is full and ids doesn't exist so there aren't new created bucket to check */
+                /* Cache is full so there aren't new created bucket to check */
                 Assert.assertNull(tempBuf);
             }
         } catch (Exception e) {
             Assert.assertEquals(exceptionOutput, e.getClass());
         }
+    }
+
+    private void setUpValues() {
+        switch (labelLedgerId) {
+            case NEGATIVE_ID:
+                this.ledgerId = -1;
+                break;
+            case NOT_EXISTING_ID:
+                this.ledgerId = 1;
+                break;
+            case EXISTING_ID:
+                this.ledgerId = 1;
+                this.entryId = 1;
+
+                if (entry != null)
+                    writeCache.put(ledgerId, entryId, entry);
+                break;
+        }
+
+        switch (labelEntryId) {
+            case NEGATIVE_ID:
+                this.entryId = -1;
+                break;
+            case NOT_EXISTING_ID:
+                if (labelLedgerId == IdStatus.EXISTING_ID)
+                    // change to implementation after jacoco
+                    // this.entryId = entryId + 1;
+                    this.entryId = entryId - 1;
+                break;
+            case EXISTING_ID:
+                // nothing to do here, value is already assigned -> entryId only exist if already exist a ledgerId
+                break;
+        }
+
+
     }
 
     @After

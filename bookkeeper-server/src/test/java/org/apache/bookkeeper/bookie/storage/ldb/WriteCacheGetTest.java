@@ -57,7 +57,7 @@ public class WriteCacheGetTest {
     @Before
     public void setUp() {
         long maxCacheSize = 1024;
-        writeCache = spy(new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize));
+        writeCache = new WriteCache(UnpooledByteBufAllocator.DEFAULT, maxCacheSize);
     }
 
     @Test
