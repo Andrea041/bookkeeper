@@ -13,8 +13,6 @@ import org.junit.runners.Parameterized;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static org.mockito.Mockito.spy;
-
 @RunWith(Parameterized.class)
 public class WriteCacheGetTest {
     private final long ledgerId;

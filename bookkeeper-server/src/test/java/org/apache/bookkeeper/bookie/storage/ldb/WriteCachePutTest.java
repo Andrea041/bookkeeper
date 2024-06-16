@@ -69,7 +69,8 @@ public class WriteCachePutTest {
     @Parameterized.Parameters
     public static Collection<Object[]> data() {
         return Arrays.asList(new Object[][] {
-                //{IllegalArgumentException.class, 1024, IdStatus.EXISTING_ID, IdStatus.NEGATIVE_ID, 2048, false, false, true, false},  // reliability T1 - unexpected output (true instead of exception)
+                // {IllegalArgumentException.class, 1024, IdStatus.NOT_EXISTING_ID, IdStatus.NEGATIVE_ID, 2048, false, false, false}, // In this way you can spot the IllegalArgumentException
+                // {IllegalArgumentException.class, 1024, IdStatus.EXISTING_ID, IdStatus.NEGATIVE_ID, 2048, false, false, false},  // reliability T1 - unexpected output (true instead of exception)
                 {IllegalArgumentException.class, 1024, IdStatus.NEGATIVE_ID, IdStatus.EXISTING_ID, 2048, false, false, false},
                 {true, 0, IdStatus.EXISTING_ID, IdStatus.EXISTING_ID, 2048, true, false, false},
                 {NullPointerException.class, null, IdStatus.EXISTING_ID, IdStatus.EXISTING_ID, 2048, false, false, false},
@@ -131,14 +132,14 @@ public class WriteCachePutTest {
     private void setUpValues() {
         switch (labelLedgerId) {
             case NEGATIVE_ID:
-                this.ledgerId = -1;
+                ledgerId = -1;
                 break;
             case NOT_EXISTING_ID:
-                this.ledgerId = 1;
+                ledgerId = 1;
                 break;
             case EXISTING_ID:
-                this.ledgerId = 1;
-                this.entryId = 1;
+                ledgerId = 1;
+                entryId = 1;
 
                 if (entry != null)
                     writeCache.put(ledgerId, entryId, entry);
@@ -147,13 +148,13 @@ public class WriteCachePutTest {
 
         switch (labelEntryId) {
             case NEGATIVE_ID:
-                this.entryId = -1;
+                entryId = -1;
                 break;
             case NOT_EXISTING_ID:
                 if (labelLedgerId == IdStatus.EXISTING_ID)
                     // change to implementation after jacoco
                     // this.entryId = entryId + 1;
-                    this.entryId = entryId - 1;
+                    entryId = entryId - 1;
                 break;
             case EXISTING_ID:
                 // nothing to do here, value is already assigned -> entryId only exist if already exist a ledgerId
